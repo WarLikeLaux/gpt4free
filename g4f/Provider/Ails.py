@@ -21,7 +21,7 @@ class Ails(AsyncGeneratorProvider):
         model: str,
         messages: list[dict[str, str]],
         stream: bool,
-        proxy: str = None,
+        proxy: str,
         **kwargs
     ) -> AsyncGenerator:
         headers = {

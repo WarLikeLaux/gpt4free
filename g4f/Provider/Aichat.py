@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from aiohttp import ClientSession
 
-from .base_provider import AsyncProvider, format_prompt
+from .base_provider import AsyncGeneratorProvider, format_prompt
 
 
-class Aichat(AsyncProvider):
+class Aichat(AsyncGeneratorProvider):
     url                   = "https://chat-gpt.org/chat"
     working               = True
     supports_gpt_35_turbo = True
@@ -14,7 +14,7 @@ class Aichat(AsyncProvider):
     async def create_async(
         model: str,
         messages: list[dict[str, str]],
-        proxy: str = None,
+        proxy: str,
         **kwargs
     ) -> str:
         headers = {

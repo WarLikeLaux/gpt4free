@@ -21,7 +21,9 @@ class BaseProvider(ABC):
     def create_completion(
         model: str,
         messages: list[dict[str, str]],
-        stream: bool, **kwargs: Any) -> CreateResult:
+        stream: bool = True,
+        proxy: str = None,
+        **kwargs: Any) -> CreateResult:
         
         raise NotImplementedError()
 
@@ -30,6 +32,7 @@ class BaseProvider(ABC):
     def params(cls):
         params = [
             ("model", "str"),
+            ("proxy", "str"),
             ("messages", "list[dict[str, str]]"),
             ("stream", "bool"),
         ]
@@ -63,18 +66,21 @@ def format_prompt(messages: list[dict[str, str]], add_special_tokens=False):
 
 class AsyncProvider(BaseProvider):
     @classmethod
-    def create_completion(
+    async def create_completion(
         cls,
         model: str,
         messages: list[dict[str, str]],
+        proxy: str = None,
         stream: bool = False, **kwargs: Any) -> CreateResult:
         
-        yield asyncio.run(cls.create_async(model, messages, **kwargs))
+        # yield asyncio.run(cls.create_async(model, messages, proxy = proxy, **kwargs))
+        yield await cls.create_async(model, messages, proxy = proxy, **kwargs)
 
     @staticmethod
     @abstractmethod
     async def create_async(
         model: str,
+        proxy: str,
         messages: list[dict[str, str]], **kwargs: Any) -> str:
         raise NotImplementedError()
 
@@ -83,23 +89,25 @@ class AsyncGeneratorProvider(AsyncProvider):
     supports_stream = True
 
     @classmethod
-    def create_completion(
+    async def create_completion(
         cls,
         model: str,
         messages: list[dict[str, str]],
         stream: bool = True,
+        proxy: str = None,
         **kwargs
     ) -> CreateResult:
-        yield from run_generator(cls.create_async_generator(model, messages, stream=stream, **kwargs))
+        yield await cls.create_async(model, messages, proxy=proxy, **kwargs)
 
     @classmethod
     async def create_async(
         cls,
         model: str,
         messages: list[dict[str, str]],
+        proxy: str = None,
         **kwargs
     ) -> str:
-        chunks = [chunk async for chunk in cls.create_async_generator(model, messages, stream=False, **kwargs)]
+        chunks = [chunk async for chunk in cls.create_async_generator(model, messages, stream=False, proxy=proxy, **kwargs)]
         if chunks:
             return "".join(chunks)
         
@@ -108,18 +116,20 @@ class AsyncGeneratorProvider(AsyncProvider):
     def create_async_generator(
             model: str,
             messages: list[dict[str, str]],
+            proxy: str = None,
             **kwargs
         ) -> AsyncGenerator:
         raise NotImplementedError()
 
 
-def run_generator(generator: AsyncGenerator[Union[Any, str], Any]):
+async def run_generator(generator: AsyncGenerator[Union[Any, str], Any]):
     loop = asyncio.new_event_loop()
     gen  = generator.__aiter__()
 
     while True:
         try:
-            yield loop.run_until_complete(gen.__anext__())
+            # yield loop.run_until_complete(gen.__anext__())
+            yield await gen.__anext__()
 
         except StopAsyncIteration:
             break

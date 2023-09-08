@@ -7,9 +7,10 @@ logging = False
 
 class ChatCompletion:
     @staticmethod
-    def create(
+    async def create(
         model    : Union[models.Model, str],
         messages : list[dict[str, str]],
+        proxy    : str                             = None,
         provider : Union[type[BaseProvider], None] = None,
         stream   : bool                            = False,
         auth     : Union[str, None]                = None, **kwargs: Any) -> Union[CreateResult, str]:
@@ -39,5 +40,14 @@ class ChatCompletion:
         if logging:
             print(f'Using {provider.__name__} provider')
 
-        result = provider.create_completion(model.name, messages, stream, **kwargs)
+        result = provider.create_completion(model.name, messages, stream, proxy, **kwargs)
+        result = await gather_results_from_generator(result)
+        return result
+        return result
         return result if stream else ''.join(result)
+
+async def gather_results_from_generator(async_gen):
+    results = []
+    async for item in async_gen:
+        results.append(item)
+    return ''.join(results)
